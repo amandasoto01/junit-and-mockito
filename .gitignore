@@ -7,4 +7,5 @@
 *.war
 *.ear
 *.nar
+*.idea
 hs_err_pid*
