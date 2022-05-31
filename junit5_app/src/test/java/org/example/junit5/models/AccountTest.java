@@ -10,10 +10,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.*;
@@ -21,11 +23,16 @@ import static org.junit.jupiter.api.Assumptions.*;
 //@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AccountTest {
     Account account;
+    private TestInfo testInfo;
+    private TestReporter testReporter;
 
     @BeforeEach
-    public void initMethodTest() {
+    public void initMethodTest(TestInfo testInfo, TestReporter testReporter) {
         this.account = new Account("Andres", new BigDecimal("1000.12345"));
+        this.testInfo = testInfo;
+        this.testReporter = testReporter;
         System.out.println("Initializing method");
+        testReporter.publishEntry("Executing: "+testInfo.getDisplayName() + " " + testInfo.getTestMethod().orElse(null).getName() + " with the tags: " + testInfo.getTags());
     }
 
     @AfterEach
@@ -44,11 +51,16 @@ class AccountTest {
     }
 
     @Nested
+    @Tag("account")
     @DisplayName("Testing account attributes")
     class AccountNameAndAmountTest {
         @Test
         @DisplayName("Test account name")
         public void testAccountName() {
+           testReporter.publishEntry(testInfo.getTags().toString());
+            if(testInfo.getTags().contains("account")) {
+                System.out.println("Do something with the account tag");
+            }
             //account.setName("Andres");
             String expected = "Andres";
             String actual = account.getName();
@@ -79,6 +91,7 @@ class AccountTest {
     @Nested
     class AccountOperationTest {
         @Test
+        @Tag("account")
         public void testDebitAccount() {
             Account account = new Account("Andres", new BigDecimal("999.999"));
             account.debit(new BigDecimal("100"));
@@ -89,6 +102,7 @@ class AccountTest {
         }
 
         @Test
+        @Tag("account")
         public void testCreditAccount() {
             Account account = new Account("Andres", new BigDecimal("999.999"));
             account.credit(new BigDecimal("100"));
@@ -99,6 +113,8 @@ class AccountTest {
         }
 
         @Test
+        @Tag("account")
+        @Tag("bank")
         void testTransferMoneyAccounts() {
             Account account = new Account("John ", new BigDecimal("2500"));
             Account account2 = new Account("Andres ", new BigDecimal("1500"));
@@ -113,6 +129,8 @@ class AccountTest {
     }
 
     @Test
+    @Tag("account")
+    @Tag("exception")
     public void testNotEnoughMoneyExceptionAccount() {
         Exception exception = assertThrows(NotEnoughMoneyException.class, () -> {
             account.debit(new BigDecimal(1500));
@@ -126,6 +144,8 @@ class AccountTest {
 
 
     @Test
+    @Tag("account")
+    @Tag("bank")
     //@Disabled
     @DisplayName("Test relationship between bank accounts")
     void testRelationBankAccounts() {
@@ -224,6 +244,7 @@ class AccountTest {
         }
     }
 
+    @Nested
     class EnvironmentVariablesTest {
         @Test
         void printEnvironmentVariables() {
@@ -293,6 +314,8 @@ class AccountTest {
         assertEquals("899.999", account.getAmount().toPlainString());
     }
 
+    @Tag("param")
+    @Nested
     class TestParameterizedTest {
         @ParameterizedTest(name = "number of repetition {index} executing with value {0} - {argumentsWithNames}" )
         @ValueSource(strings = {"100","200", "500", "700", "1000.12345"})
@@ -350,6 +373,8 @@ class AccountTest {
         }
     }
 
+
+    @Tag("param")
     @ParameterizedTest(name = "number of repetition {index} executing with value {0} - {argumentsWithNames}" )
     @MethodSource("amountList")
     public void testDebitAccountMethodSource(String amount) {
@@ -361,5 +386,28 @@ class AccountTest {
 
     static List<String> amountList() {
         return Arrays.asList("100","200", "500", "700", "1000.12345");
+    }
+
+    @Nested
+    @Tag("timeout")
+    class timeoutExampleTest {
+        @Test
+        @Timeout(1)
+        void timeoutTest() throws InterruptedException {
+            TimeUnit.MILLISECONDS.sleep(100);
+        }
+
+        @Test
+        @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
+        void timeoutTest2() throws InterruptedException {
+            TimeUnit.MILLISECONDS.sleep(900);
+        }
+
+        @Test
+        void testTimeoutAssertions() {
+            assertTimeout(Duration.ofSeconds(5), () -> {
+                TimeUnit.MILLISECONDS.sleep(4000);
+            });
+        }
     }
 }
