@@ -10,7 +10,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -85,11 +87,14 @@ class ExamServiceImplTest {
 
     @Test
     void testDoesNotExistExamVerify() {
+        // Given
         when(repository.findAll()).thenReturn(Collections.emptyList());
         when(questionRepository.findQuestionsByExamId(anyLong())).thenReturn(Data.QUESTIONS);
 
+        // When
         Exam exam = service.findExamByNameWithQuestions("Math");
 
+        // Then
         assertNull(exam);
 
         verify(repository).findAll();
@@ -98,17 +103,43 @@ class ExamServiceImplTest {
 
     @Test
     void testSaveExam() {
+        // Given
         Exam newExam = Data.EXAM;
         newExam.setQuestions(Data.QUESTIONS);
 
-        when(repository.save(any(Exam.class))).thenReturn(Data.EXAM);
+        when(repository.save(any(Exam.class))).then(new Answer<Exam>(){
+            Long sequence = 8L;
+            @Override
+            public Exam answer(InvocationOnMock invocation) throws Throwable {
+                Exam exam = invocation.getArgument(0);
+                exam.setId(sequence++);
+                return exam;
+            }
+        });
+
+        // When
         Exam exam = service.save(newExam);
 
+        // Then
         assertNotNull(exam.getId());
         assertEquals(8L, exam.getId());
         assertEquals("Physics", exam.getName());
 
         verify(repository).save(any(Exam.class));
         verify(questionRepository).saveQuestions(anyList());
+    }
+
+    @Test
+    void manageExceptions() {
+        when(repository.findAll()).thenReturn(Data.EXAMS_ID_NULL);
+        when(questionRepository.findQuestionsByExamId(isNull())).thenThrow(IllegalArgumentException.class);
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            service.findExamByNameWithQuestions("Math");
+        });
+        assertEquals(IllegalArgumentException.class, exception.getClass());
+
+        verify(repository).findAll();
+        verify(questionRepository).findQuestionsByExamId(isNull());
     }
 }
