@@ -2,14 +2,11 @@ package org.appmockito.examples.services;
 
 import org.appmockito.examples.models.Exam;
 import org.appmockito.examples.repositories.ExamRepository;
-import org.appmockito.examples.repositories.ExamRepositoryImpl2;
 import org.appmockito.examples.repositories.QuestionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
@@ -29,6 +26,8 @@ class ExamServiceImplTest {
     QuestionRepository questionRepository;
     @InjectMocks
     ExamServiceImpl service;
+    @Captor
+    ArgumentCaptor<Long> captor;
 
     @BeforeEach
     void setUp() {
@@ -141,5 +140,80 @@ class ExamServiceImplTest {
 
         verify(repository).findAll();
         verify(questionRepository).findQuestionsByExamId(isNull());
+    }
+
+    @Test
+    void testArgumentMatchers() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+        when(questionRepository.findQuestionsByExamId(anyLong())).thenReturn(Data.QUESTIONS);
+
+        service.findExamByNameWithQuestions("Math");
+
+        verify(repository).findAll();
+        //verify(questionRepository).findQuestionsByExamId(argThat(arg -> arg != null && arg.equals(5L)));
+        verify(questionRepository).findQuestionsByExamId(argThat(arg -> arg != null && arg >= 5L));
+        //verify(questionRepository).findQuestionsByExamId(eq(5L));
+    }
+
+    @Test
+    void testArgumentMatchers2() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+        when(questionRepository.findQuestionsByExamId(anyLong())).thenReturn(Data.QUESTIONS);
+
+        service.findExamByNameWithQuestions("Math");
+
+        verify(repository).findAll();
+        verify(questionRepository).findQuestionsByExamId(argThat(new MyArgumentMatchers()));
+    }
+
+    @Test
+    void testArgumentMatchers3() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+        when(questionRepository.findQuestionsByExamId(anyLong())).thenReturn(Data.QUESTIONS);
+
+        service.findExamByNameWithQuestions("Math");
+
+        verify(repository).findAll();
+        verify(questionRepository).findQuestionsByExamId(argThat( argument -> argument != null && argument > 0));
+    }
+
+    public static class MyArgumentMatchers implements ArgumentMatcher<Long> {
+        private Long argument;
+        @Override
+        public boolean matches(Long argument) {
+            this.argument = argument;
+            return argument != null && argument > 0;
+        }
+
+        @Override
+        public String toString() {
+            return "Personalized error message that mockito prints " +
+                    " in case that the test fail " + argument +
+                    " must be a positive integer";
+        }
+    }
+
+    @Test
+    void testArgumentCapture() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+        //when(questionRepository.findQuestionsByExamId(anyLong())).thenReturn(Data.QUESTIONS);
+
+        service.findExamByNameWithQuestions("Math");
+
+        //ArgumentCaptor<Long> captor = ArgumentCaptor.forClass(Long.class);
+        verify(questionRepository).findQuestionsByExamId(captor.capture());
+
+        assertEquals(5L, captor.getValue());
+    }
+
+    @Test
+    void testDoThrow() {
+        Exam exam = Data.EXAM;
+        exam.setQuestions(Data.QUESTIONS);
+
+        doThrow(IllegalArgumentException.class).when(questionRepository).saveQuestions(anyList());
+        assertThrows(IllegalArgumentException.class, () -> {
+            service.save(exam);
+        });
     }
 }
