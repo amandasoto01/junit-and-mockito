@@ -1,8 +1,11 @@
 package org.appmockito.examples.services;
 
+import org.appmockito.examples.Data;
 import org.appmockito.examples.models.Exam;
 import org.appmockito.examples.repositories.ExamRepository;
+import org.appmockito.examples.repositories.ExamRepositoryImpl;
 import org.appmockito.examples.repositories.QuestionRepository;
+import org.appmockito.examples.repositories.QuestionRepositoryImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +17,7 @@ import org.mockito.stubbing.Answer;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -21,9 +25,9 @@ import java.util.Optional;
 @ExtendWith(MockitoExtension.class)
 class ExamServiceImplTest {
     @Mock
-    ExamRepository repository;
+    ExamRepositoryImpl repository;
     @Mock
-    QuestionRepository questionRepository;
+    QuestionRepositoryImpl questionRepository;
     @InjectMocks
     ExamServiceImpl service;
     @Captor
@@ -31,8 +35,8 @@ class ExamServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        //repository = mock(ExamRepositoryImpl2.class);
-        //questionRepository = mock(QuestionRepository.class);
+        //repository = mock(ExamRepositoryImpl.class);
+        //questionRepository = mock(QuestionRepositoryImpl.class);
         //service = new ExamServiceImpl(repository, questionRepository);
 
         //MockitoAnnotations.openMocks(this);
@@ -215,5 +219,157 @@ class ExamServiceImplTest {
         assertThrows(IllegalArgumentException.class, () -> {
             service.save(exam);
         });
+    }
+
+    @Test
+    void testDoAnswer() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+        //when(questionRepository.findQuestionsByExamId(anyLong())).thenReturn(Data.QUESTIONS);
+
+        doAnswer( invocation -> {
+           Long id = invocation.getArgument(0); // 0 porque solo se esta pasando un argumento
+           return id == 5L ? Data.QUESTIONS: Collections.emptyList();
+        }).when(questionRepository).findQuestionsByExamId(anyLong());
+
+        Exam exam = service.findExamByNameWithQuestions("Math");
+
+        assertTrue(exam.getQuestions().contains("geometry"));
+        assertEquals(5, exam.getQuestions().size());
+        assertEquals(5L, exam.getId());
+        assertEquals("Math", exam.getName());
+
+        verify(questionRepository).findQuestionsByExamId(anyLong());
+    }
+
+    @Test
+    void testDoAnswerSaveExam() {
+        // Given
+        Exam newExam = Data.EXAM;
+        newExam.setQuestions(Data.QUESTIONS);
+
+        doAnswer(new Answer<Exam>(){
+            Long sequence = 8L;
+            @Override
+            public Exam answer(InvocationOnMock invocation) throws Throwable {
+                Exam exam = invocation.getArgument(0);
+                exam.setId(sequence++);
+                return exam;
+            }
+        }).when(repository).save(any(Exam.class));
+
+        // When
+        Exam exam = service.save(newExam);
+
+        // Then
+        assertNotNull(exam.getId());
+        assertEquals(8L, exam.getId());
+        assertEquals("Physics", exam.getName());
+
+        verify(repository).save(any(Exam.class));
+        verify(questionRepository).saveQuestions(anyList());
+    }
+
+    @Test
+    void testDoCallRealMethod() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+        //when(questionRepository.findQuestionsByExamId(anyLong())).thenReturn(Data.QUESTIONS);
+         doCallRealMethod().when(questionRepository).findQuestionsByExamId(anyLong());
+
+        Exam exam = service.findExamByNameWithQuestions("Math");
+
+        assertEquals(5L, exam.getId());
+        assertEquals("Math", exam.getName());
+    }
+
+    @Test
+    void testSpy() {
+        ExamRepository examRepository = spy(ExamRepositoryImpl.class);
+        QuestionRepository questionRepository = spy(QuestionRepositoryImpl.class);
+        ExamService examService = new ExamServiceImpl(examRepository, questionRepository);
+
+        List<String> questions = Arrays.asList("arithmetic");
+        //when(questionRepository.findQuestionsByExamId(anyLong())).thenReturn(questions);
+        doReturn(questions).when(questionRepository).findQuestionsByExamId(anyLong());
+
+        Exam exam = examService.findExamByNameWithQuestions("Math");
+
+        assertEquals(5L, exam.getId());
+        assertEquals("Math", exam.getName());
+        assertEquals(1, exam.getQuestions().size());
+        assertTrue(exam.getQuestions().contains("arithmetic"));
+
+        verify(examRepository).findAll();
+        verify(questionRepository).findQuestionsByExamId(anyLong());
+    }
+
+    @Test
+    void testInvocationOrder() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+
+        service.findExamByNameWithQuestions("Math");
+        service.findExamByNameWithQuestions("Language");
+
+        InOrder inOrder = inOrder(questionRepository);
+        inOrder.verify(questionRepository).findQuestionsByExamId(5L);
+        inOrder.verify(questionRepository).findQuestionsByExamId(6L);
+    }
+
+    @Test
+    void testInvocationOrder2() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+
+        service.findExamByNameWithQuestions("Math");
+        service.findExamByNameWithQuestions("Language");
+
+        InOrder inOrder = inOrder(repository, questionRepository);
+
+        inOrder.verify(repository).findAll();
+        inOrder.verify(questionRepository).findQuestionsByExamId(5L);
+
+        inOrder.verify(repository).findAll();
+        inOrder.verify(questionRepository).findQuestionsByExamId(6L);
+    }
+
+    @Test
+    void testInvocationNumber() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+
+        service.findExamByNameWithQuestions("Math");
+
+        verify(questionRepository).findQuestionsByExamId(5L);
+        verify(questionRepository, times(1)).findQuestionsByExamId(5L);
+        verify(questionRepository, atLeast(1)).findQuestionsByExamId(5L);
+        verify(questionRepository, atLeastOnce()).findQuestionsByExamId(5L);
+        verify(questionRepository, atMost(1)).findQuestionsByExamId(5L);
+        verify(questionRepository, atMostOnce()).findQuestionsByExamId(5L);
+    }
+
+    @Test
+    void testInvocationNumber2() {
+        when(repository.findAll()).thenReturn(Data.EXAMS);
+
+        service.findExamByNameWithQuestions("Math");
+
+        //verify(questionRepository).findQuestionsByExamId(5L);
+        verify(questionRepository, times(2)).findQuestionsByExamId(5L);
+        verify(questionRepository, atLeast(1)).findQuestionsByExamId(5L);
+        verify(questionRepository, atLeastOnce()).findQuestionsByExamId(5L);
+        verify(questionRepository, atMost(20)).findQuestionsByExamId(5L);
+        //verify(questionRepository, atMostOnce()).findQuestionsByExamId(5L);
+    }
+
+    @Test
+    void testInvocationNumber3() {
+        when(repository.findAll()).thenReturn(Collections.emptyList());
+
+        service.findExamByNameWithQuestions("Math");
+
+        verify(questionRepository, never()).findQuestionsByExamId(5L);
+        verifyNoInteractions(questionRepository);
+        verify(repository, times(1)).findAll();
+        verify(repository, atLeastOnce()).findAll();
+        verify(repository, atMost(10)).findAll();
+        verify(repository, atMostOnce()).findAll();
+
     }
 }

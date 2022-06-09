@@ -1,4 +1,4 @@
-package org.appmockito.examples.services;
+package org.appmockito.examples;
 
 import org.appmockito.examples.models.Exam;
 
