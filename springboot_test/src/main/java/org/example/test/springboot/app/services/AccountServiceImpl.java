@@ -4,9 +4,11 @@ import org.example.test.springboot.app.models.Account;
 import org.example.test.springboot.app.models.Bank;
 import org.example.test.springboot.app.repositories.AccountRepository;
 import org.example.test.springboot.app.repositories.BankRepository;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
+@Service
 public class AccountServiceImpl implements  AccountService {
 
     private AccountRepository accountRepository;
@@ -37,11 +39,6 @@ public class AccountServiceImpl implements  AccountService {
     @Override
     public void transfer(Long originAccountId, Long destinationAccountId, BigDecimal amount,
                          Long bankId) {
-        Bank bank = bankRepository.findById(bankId);
-        int totalTransfers = bank.getTotalTransfers();
-        bank.setTotalTransfer(++totalTransfers);
-        bankRepository.update(bank);
-
         Account originAccount = accountRepository.findById(originAccountId);
         originAccount.debit(amount);
         accountRepository.update(originAccount);
@@ -49,5 +46,10 @@ public class AccountServiceImpl implements  AccountService {
         Account destinationAccount = accountRepository.findById(destinationAccountId);
         destinationAccount.credit(amount);
         accountRepository.update(destinationAccount);
+
+        Bank bank = bankRepository.findById(bankId);
+        int totalTransfers = bank.getTotalTransfers();
+        bank.setTotalTransfer(++totalTransfers);
+        bankRepository.update(bank);
     }
 }
