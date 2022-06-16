@@ -2,10 +2,15 @@ package org.example.test.springboot.app.models;
 
 import org.example.test.springboot.app.exceptions.NotEnoughMoneyException;
 
+import javax.persistence.*;
 import java.math.BigDecimal;
 import java.util.Objects;
 
+@Entity
+@Table(name="accounts")
 public class Account {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // auto increments
     private Long id;
     private String person;
     private BigDecimal amount;

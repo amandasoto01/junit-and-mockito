@@ -1,9 +1,16 @@
 package org.example.test.springboot.app.models;
 
+import javax.persistence.*;
+
+@Entity
+@Table(name="banks")
 public class Bank {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
-    private int totalTransfer;
+    @Column(name="total_transfers")
+    private int totalTransfers;
 
     public Bank() {
     }
@@ -11,7 +18,7 @@ public class Bank {
     public Bank(Long id, String name, int totalTransfer) {
         this.id = id;
         this.name = name;
-        this.totalTransfer = totalTransfer;
+        this.totalTransfers = totalTransfer;
     }
 
     public Long getId() {
@@ -31,10 +38,10 @@ public class Bank {
     }
 
     public int getTotalTransfers() {
-        return totalTransfer;
+        return totalTransfers;
     }
 
-    public void setTotalTransfer(int totalTransfer) {
-        this.totalTransfer = totalTransfer;
+    public void setTotalTransfers(int totalTransfers) {
+        this.totalTransfers = totalTransfers;
     }
 }
