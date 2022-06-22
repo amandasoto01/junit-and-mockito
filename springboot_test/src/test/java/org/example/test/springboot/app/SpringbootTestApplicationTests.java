@@ -8,16 +8,17 @@ import org.example.test.springboot.app.repositories.BankRepository;
 import org.example.test.springboot.app.services.AccountService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-import static org.example.test.springboot.app.Data.*;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.example.test.springboot.app.Data.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 class SpringbootTestApplicationTests {
@@ -121,5 +122,43 @@ class SpringbootTestApplicationTests {
 		assertEquals("Andres", account2.getPerson());
 
 		verify(accountRepository, times(2)).findById(1L);
+	}
+
+	@Test
+	void testFindAll() {
+		// Given
+		List<Account> data = Arrays.asList(createAccount001().orElseThrow(), createAccount002().orElseThrow());
+		when(accountRepository.findAll()).thenReturn(data);
+
+		//When
+		List<Account> accounts = service.findAll();
+
+		// Then
+		assertFalse(accounts.isEmpty());
+		assertEquals(2, accounts.size());
+		assertTrue(accounts.contains(createAccount002().orElseThrow()));
+
+		verify(accountRepository).findAll();
+	}
+
+	@Test
+	void testSave() {
+		// Given
+		Account pepeAccount = new Account(null, "Pepe", new BigDecimal("3000"));
+		when(accountRepository.save(any())).then(invocation -> {
+			Account ac = invocation.getArgument(0);
+			ac.setId(3L);
+			return ac;
+		});
+
+		// When
+		Account account = service.save(pepeAccount);
+
+		// Then
+		assertEquals("Pepe", account.getPerson());
+		assertEquals(3, account.getId());
+		assertEquals("3000", account.getAmount().toPlainString());
+
+		verify(accountRepository).save(any());
 	}
 }
