@@ -10,6 +10,7 @@ public interface AccountService {
     List<Account> findAll();
     Account findById(Long id);
     Account save(Account account);
+    void deleteById(Long id);
     int getTotalTransfers(Long bankId);
     BigDecimal getAmount (Long accountId);
     void transfer(Long originAccount, Long destinationAccount, BigDecimal amount, Long bankId);
